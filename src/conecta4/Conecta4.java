@@ -18,18 +18,19 @@ import java.io.InputStreamReader;
 
 public class Conecta4 {
 
-    private static class BadArgsException extends Exception {
+    public static class BadArgsException extends Exception {
 
         public BadArgsException() {
         }
     }
+    static boolean userInput;
     static int cols; //Columnas
     static int rows; //Filas
     static int[][] board; //Tablero
     static boolean playing = true; //Para salir del bucle y dejar de jugar cuando se acabe
     static int playerThrowing = 1; //jugador que está tirando
     static int winner; //ganador
-    static int numTurns = 0; //Cuantas tiradas se han hecho
+    public static int numTurns = 0; //Cuantas tiradas se han hecho
 
     public static void initialize(String[] args) throws BadArgsException { //Las columnas y filas se pasan por parámetro
         //TIP: Desde Netbeans, botón derecho en el proyecto, propierties, run, y poner por arguments columnas y filas
@@ -40,6 +41,7 @@ public class Conecta4 {
         try {
             cols = Integer.parseInt(args[0]);
             rows = Integer.parseInt(args[1]);
+            
         } catch (NumberFormatException e) {
             throw new BadArgsException();
         }
@@ -48,6 +50,7 @@ public class Conecta4 {
     }
 
     public static void main(String[] args) {
+        userInput = true;
         try {
             initialize(args);
         } catch (BadArgsException ex) {
@@ -58,16 +61,14 @@ public class Conecta4 {
 
         while (playing) {
             showBoard();
-            while (!turn()) {
+           
+            while (!turn(0)) {
                 System.out.println("Invalid throw");
             }
-            
+
             checkBoard();
-            numTurns++;
-            if (numTurns == cols * rows) { //Si ya no hay mas sitio queda en empate
-                winner = 0;
-                playing = false;
-            }
+
+
         }
 
         showBoard();
@@ -77,9 +78,10 @@ public class Conecta4 {
         } else {
             System.out.println("Winner Player " + winner);
         }
+        getUserInput();
     }
 
-    private static void showBoard() { //Printa el estado actual del tablero
+    public static void showBoard() { //Printa el estado actual del tablero
 
         for (int r = rows - 1; r >= 0; r--) {
             System.out.println();
@@ -96,28 +98,44 @@ public class Conecta4 {
         System.out.println();
     }
 
-    private static boolean turn() { //Función que ejecuta cada tirada, devuelve falso si no se ha podido realizar
+    public static boolean turn(int pos) { //Función que ejecuta cada tirada, devuelve falso si no se ha podido realizar
         System.out.println("Player " + playerThrowing + " throws");
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in)); //entrada por teclado
+
         int inp;
-        try {
-            String inp_s = reader.readLine();
-            if (inp_s.isEmpty()) {
-                return false;
-            }
-            inp = Integer.parseInt(inp_s) - 1; //se tira en la columna-1, ya que el vector es de 0 a cols-1
-        } catch (IOException | NumberFormatException e) {
-            //Logger.getLogger(Conecta4.class.getName()).log(Level.SEVERE, null, ex);
-            return false;
+        if (userInput) {
+            inp = getUserInput();
+        } else {
+            inp = pos;
         }
 
         if (inp < 0 || inp > cols - 1) {
             return false;
         }
+        numTurns++;
+        return throwToken(inp);
 
+    }
+
+    private static int getUserInput() {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in)); //entrada por teclado
+        int inp;
+        try {
+            String inp_s = reader.readLine();
+            if (inp_s.isEmpty()) {
+                return -1;
+            }
+            inp = Integer.parseInt(inp_s) - 1; //se tira en la columna-1, ya que el vector es de 0 a cols-1
+        } catch (IOException | NumberFormatException e) {
+            //Logger.getLogger(Conecta4.class.getName()).log(Level.SEVERE, null, ex);
+            return -1;
+        }
+        return inp;
+    }
+
+    public static boolean throwToken(int i) {
         for (int r = 0; r < rows; r++) { //Mira si hay sitio en la columna elegida
-            if (board[inp][r] == 0) {
-                board[inp][r] = playerThrowing; //Se asigna a la posicion de la tirada, el número del jugador que ha tirado
+            if (board[i][r] == 0) {
+                board[i][r] = playerThrowing; //Se asigna a la posicion de la tirada, el número del jugador que ha tirado
 
                 if (playerThrowing == 1) {
                     playerThrowing = 2;
@@ -130,8 +148,8 @@ public class Conecta4 {
         return false;
     }
 
-    private static void checkBoard() { //Comprueba si ha habido ganador
-            vertical();
+    public static void checkBoard() { //Comprueba si ha habido ganador
+        vertical();
         if (playing) {
             horizontal();
         }
@@ -141,7 +159,11 @@ public class Conecta4 {
         if (playing) {
             diagonal_Left();
         }
-        
+        if (playing && numTurns == cols * rows) { //Si ya no hay mas sitio queda en empate
+            winner = 0;
+            playing = false;
+        }
+
     }
 
     private static void vertical() {
@@ -229,7 +251,7 @@ public class Conecta4 {
         }
     }
 
-    private static boolean check(int[] line) { //Función que comprueba si en un vector hay 4 numeros iguales consecutivos
+    public static boolean check(int[] line) { //Función que comprueba si en un vector hay 4 numeros iguales consecutivos
         //DEBUG: Printa todas los vectores que tiene que comprobar
         /*
          * for (int s = 0; s < line.length; s++) { System.out.print(line[s]); }
