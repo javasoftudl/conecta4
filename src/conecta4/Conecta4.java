@@ -18,6 +18,11 @@ import java.io.InputStreamReader;
 
 public class Conecta4 {
 
+    private static class BadArgsException extends Exception {
+
+        public BadArgsException() {
+        }
+    }
     static int cols; //Columnas
     static int rows; //Filas
     static int[][] board; //Tablero
@@ -26,22 +31,37 @@ public class Conecta4 {
     static int winner; //ganador
     static int numTurns = 0; //Cuantas tiradas se han hecho
 
-    public static void initialize(String[] args) { //Las columnas y filas se pasan por parámetro
+    public static void initialize(String[] args) throws BadArgsException { //Las columnas y filas se pasan por parámetro
         //TIP: Desde Netbeans, botón derecho en el proyecto, propierties, run, y poner por arguments columnas y filas
         //Por ejemplo [Arguments:]  8 8
-        cols = Integer.parseInt(args[0]);
-        rows = Integer.parseInt(args[1]);
+        if (args.length != 2) {
+            throw new BadArgsException();
+        }
+        try {
+            cols = Integer.parseInt(args[0]);
+            rows = Integer.parseInt(args[1]);
+        } catch (NumberFormatException e) {
+            throw new BadArgsException();
+        }
         board = new int[cols][rows];
+
     }
 
     public static void main(String[] args) {
-        initialize(args);
+        try {
+            initialize(args);
+        } catch (BadArgsException ex) {
+            System.out.println("Please, run this program with 2 parameters as integers (columns, rows)\n"
+                    + ". For example: Conecta4.java 6 5");
+            return;
+        }
 
         while (playing) {
             showBoard();
             while (!turn()) {
                 System.out.println("Invalid throw");
             }
+            
             checkBoard();
             numTurns++;
             if (numTurns == cols * rows) { //Si ya no hay mas sitio queda en empate
@@ -82,10 +102,11 @@ public class Conecta4 {
         int inp;
         try {
             String inp_s = reader.readLine();
-            if(inp_s.isEmpty())
+            if (inp_s.isEmpty()) {
                 return false;
+            }
             inp = Integer.parseInt(inp_s) - 1; //se tira en la columna-1, ya que el vector es de 0 a cols-1
-        } catch (IOException e) {
+        } catch (IOException | NumberFormatException e) {
             //Logger.getLogger(Conecta4.class.getName()).log(Level.SEVERE, null, ex);
             return false;
         }
@@ -110,9 +131,7 @@ public class Conecta4 {
     }
 
     private static void checkBoard() { //Comprueba si ha habido ganador
-        if (playing) {
             vertical();
-        }
         if (playing) {
             horizontal();
         }
@@ -122,12 +141,12 @@ public class Conecta4 {
         if (playing) {
             diagonal_Left();
         }
+        
     }
 
     private static void vertical() {
-        for (int c = 0; c < board.length; c++) {
-            check(board[c]);
-            if (winner != 0) {
+        for (int c = 0; c < cols; c++) {
+            if (check(board[c])) {
                 break;
             }
         }
@@ -135,27 +154,22 @@ public class Conecta4 {
 
     private static void horizontal() {
         int[] col = new int[cols];
-
         for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < board.length; c++) {
-                int i = board[c][r];
+            for (int c = 0; c < cols; c++) {
                 col[c] = board[c][r];
             }
-            check(col);
-            for (int i = 0; i < col.length; i++) //Resetea vector
-            {
-                col[i] = 0;
-            }
-            if (winner != 0) {
+            if (check(col)) {
                 break;
             }
+
+            resetVector(col);
         }
     }
 
     private static void diagonal_Right() { //La comprobación se hace en forma de L
         //comenzando desde una esquina y recorriendo todas las columnas
         //Y luego recorriendo todas las filas
-        int[] diag = new int[Math.max(cols, rows)]; //la diagonal máxima es el max entre columnas y filas
+        int[] diag = new int[Math.min(cols, rows)]; //la diagonal máxima es el max entre columnas y filas
         int rStart = 3;
         int cStart = 0;
         int r = rStart;
@@ -167,7 +181,9 @@ public class Conecta4 {
             r--;
             c++;
             if (r < 0 || c > cols - 1) {
-                check(diag);
+                if (check(diag)) {
+                    return;
+                }
                 if (rStart < rows - 1) {
                     rStart++;
                 } else {
@@ -176,16 +192,14 @@ public class Conecta4 {
                 r = rStart;
                 c = cStart;
 
-                for (int i = 0; i < diag.length; i++) {
-                    diag[i] = 0;
-                }
+                resetVector(diag);
                 aux = 0;
             }
         }
     }
 
     private static void diagonal_Left() {
-        int[] diag = new int[Math.max(cols, rows)];
+        int[] diag = new int[Math.min(cols, rows)];
         int rStart = rows - 3;
         int cStart = 0;
         int r = rStart;
@@ -197,7 +211,9 @@ public class Conecta4 {
             r++;
             c++;
             if (r > rows - 1 || c > cols - 1) {
-                check(diag);
+                if (check(diag)) {
+                    return;
+                }
 
                 if (rStart > 0) {
                     rStart--;
@@ -207,15 +223,13 @@ public class Conecta4 {
                 r = rStart;
                 c = cStart;
 
-                for (int i = 0; i < diag.length; i++) {
-                    diag[i] = 0;
-                }
+                resetVector(diag);
                 aux = 0;
             }
         }
     }
 
-    private static void check(int[] line) { //Función que comprueba si en un vector hay 4 numeros iguales consecutivos
+    private static boolean check(int[] line) { //Función que comprueba si en un vector hay 4 numeros iguales consecutivos
         //DEBUG: Printa todas los vectores que tiene que comprobar
         /*
          * for (int s = 0; s < line.length; s++) { System.out.print(line[s]); }
@@ -231,13 +245,21 @@ public class Conecta4 {
                 if (acc == 4) {
                     winner = line[i];
                     playing = false;
-                    return;
+                    return true;
                 }
             } else if (line[i] != 0) {
                 acc = 1;
             } else {
                 acc = 0;
             }
+        }
+        return false;
+    }
+
+    private static void resetVector(int[] vec) {
+        for (int i = 0; i < vec.length; i++) //Resetea vector
+        {
+            vec[i] = 0;
         }
     }
 }
